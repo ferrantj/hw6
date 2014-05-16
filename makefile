@@ -5,18 +5,18 @@ JC= javac
 	$(JC) $(JFLAGS) $*.java
 
 CLASSES = \
-	Dispatcher.java \
-	Fingerprint.java \
-	Firewall.java \
 	FullException.java \
+	PaddedPrimitive.java \
+	RandomGenerator.java \
+	Fingerprint.java \
+	RangeList.java \
+	RangeLists.java \
+	Dispatcher.java \
 	PacketGenerator.java \
 	PacketQueue.java \
 	PacketWorker.java \
-	PaddedPrimitive.java \
 	ParallelDispatcher.java \
-	RandomGenerator.java \
-	RangeList.java \
-	RangeLists.java \
+	Firewall.java \
 	
 
 default: classes
