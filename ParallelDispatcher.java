@@ -4,9 +4,11 @@ public class ParallelDispatcher implements Runnable {
 	private PacketGenerator source;
 	private PaddedPrimitiveNonVolatile<Boolean> finished;
 	public int totalPackets;
+	private PacketQueue[] configs;
 
-	public ParallelDispatcher(PacketQueue[] queues, PacketGenerator source,
+	public ParallelDispatcher(PacketQueue[] queues,PacketQueue[] configs, PacketGenerator source,
 			PaddedPrimitiveNonVolatile<Boolean> finished) {
+		this.configs = configs;
 		this.queues = queues;
 		this.source = source;
 		this.finished = finished;
@@ -16,26 +18,27 @@ public class ParallelDispatcher implements Runnable {
 	public void run() {
 		Packet p;
 		while (!finished.value) {
-			for (int i = 0; i < queues.length - 1; i++) {
+			for (int i = 0; i < queues.length; i++) {
 				p = source.getPacket();
 				switch (p.type) {
 				case ConfigPacket:
 					while (p != null) {
-						try {
-							queues[queues.length - 1].enq(p);
-							totalPackets += 1;
-							p = null;
-							break;
-						} catch (FullException e) {
-							
+						for (int j = 0; j < configs.length; j++) {
+							try {
+								configs[(j + i) % (configs.length)].enq(p);
+								totalPackets += 1;
+								p = null;
+								break;
+							} catch (FullException e) {
+							}
 						}
 					}
 					break;
 				case DataPacket:
 					while (p != null) {
-						for (int j = 0; j < queues.length - 1; j++) {
+						for (int j = 0; j < queues.length; j++) {
 							try {
-								queues[(j + i) % (queues.length - 1)].enq(p);
+								queues[(j + i) % (queues.length)].enq(p);
 								totalPackets += 1;
 								p = null;
 								break;

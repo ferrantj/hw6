@@ -191,9 +191,13 @@ class ParellelFirewall{
 				meanTrainSize, meanTrainsPerComm, meanWindow, meanCommsPerAddress,
 				meanWork, configFraction, pngFraction, acceptingFraction);
 		ConcurrentHashMap<Long,Integer> checksums=new ConcurrentHashMap<Long,Integer>(); 
-		PacketQueue[] queues = new PacketQueue[n+1];
-	    for(int i=0; i<n+1; i++){
+		PacketQueue[] queues = new PacketQueue[n-((int) Math.ceil(n*configFraction))];
+		PacketQueue[] configs = new PacketQueue[(int) Math.ceil(n*configFraction)];
+	    for(int i=0; i<queues.length; i++){
 	    	queues[i]=new PacketQueue(8);
+	    }
+	    for(int i=0; i<configs.length; i++){
+	    	configs[i]=new PacketQueue(8);
 	    }
 		//preconfiguring address ranges
 		for(int i=0;i<Math.pow(Math.pow(2, numAddressesLog), 1.5);i++){
@@ -211,17 +215,19 @@ class ParellelFirewall{
 	    PaddedPrimitiveNonVolatile<Boolean> done = new PaddedPrimitiveNonVolatile<Boolean>(false);
 		
 		//dispatcher and workers
-	    ParallelDispatcher dispatcher = new ParallelDispatcher(queues, source, finished);
+	    ParallelDispatcher dispatcher = new ParallelDispatcher(queues, configs, source, finished);
 	    Thread dispatcherThread = new Thread(dispatcher);
 	    
-	    Thread[] workers = new Thread[n+1];
-	    PacketWorker[] workersdata = new PacketWorker[n+1];
-	    for(int i=0; i<n; i++){
+	    Thread[] workers = new Thread[n];
+	    PacketWorker[] workersdata = new PacketWorker[n];
+	    for(int i=0; i<queues.length; i++){
 	    	workersdata[i]=new ParallelPacketWorker(done, queues,checksums,i,ranges);
 	    	workers[i]= new Thread(workersdata[i]);
 	    }
-	    workersdata[n]=new ParallelConfigPacketWorker(done, queues,checksums,n,ranges);
-	    workers[n]=new Thread(workersdata[n]);
+	    for(int i=0; i<n-queues.length; i++){
+	    	workersdata[i+queues.length]=new ParallelConfigPacketWorker(done, configs,checksums,i,ranges);
+	    	workers[i+queues.length]= new Thread(workersdata[i+queues.length]);
+	    }
 	    //start workers
 	    for(Thread worker:workers){
 	    	worker.start();
