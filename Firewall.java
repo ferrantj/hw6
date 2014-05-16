@@ -1,5 +1,7 @@
 import java.util.HashMap;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 class SerialFirewall {
 	public static void main(String[] args) {
@@ -220,13 +222,17 @@ class ParellelFirewall{
 	    
 	    Thread[] workers = new Thread[n];
 	    PacketWorker[] workersdata = new PacketWorker[n];
+	    Lock[] qlocks = new Lock[queues.length];
+	    Lock[] clocks = new Lock[configs.length];
 	    for(int i=0; i<queues.length; i++){
-	    	workersdata[i]=new ParallelPacketWorker(done, queues,checksums,i,ranges);
+	    	workersdata[i]=new ParallelPacketWorker(done, queues,checksums,i,ranges,qlocks);
 	    	workers[i]= new Thread(workersdata[i]);
+	    	qlocks[i]= new ReentrantLock();
 	    }
-	    for(int i=0; i<n-queues.length; i++){
-	    	workersdata[i+queues.length]=new ParallelConfigPacketWorker(done, configs,checksums,i,ranges);
+	    for(int i=0; i<configs.length; i++){
+	    	workersdata[i+queues.length]=new ParallelConfigPacketWorker(done, configs,checksums,i,ranges,clocks);
 	    	workers[i+queues.length]= new Thread(workersdata[i+queues.length]);
+	    	clocks[i]= new ReentrantLock();
 	    }
 	    //start workers
 	    for(Thread worker:workers){

@@ -105,7 +105,7 @@ class SerialRangeList implements RangeList{
 }
 class ParallelRangeList implements RangeList{
 	private TreeMap<Integer,Integer> ranges = new TreeMap<Integer,Integer>();
-	private boolean PNG;
+	private volatile boolean PNG;
 	private ReadWriteLock lock;
 
 	public ParallelRangeList(int addressBegin, int addressEnd, boolean personaNonGrata,boolean acceptingRange) {

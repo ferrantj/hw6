@@ -111,24 +111,33 @@ class ParallelPacketWorker implements PacketWorker {
 	long residue = 0;
 	Fingerprint fingerprint;
 	final int i;
+	final Lock[] locks;
 
 	public ParallelPacketWorker(PaddedPrimitiveNonVolatile<Boolean> done,
 			PacketQueue[] queues, ConcurrentHashMap<Long, Integer> table,
-			int i, RangeLists ranges) {
+			int i, RangeLists ranges,Lock[] locks) {
 		this.done = done;
 		this.sources = queues;
 		this.table = table;
 		this.fingerprint = new Fingerprint();
 		this.i = i;
 		this.ranges = ranges;
+		this.locks = locks;
 	}
 
 	public void run() {
 		Random rand = new Random();
 		Packet pkt;
 		int j = rand.nextInt(sources.length);
+		boolean locked = false;
 		while (!done.value) {
 			while (true) {
+				if(!locked){
+					while(!locks[j].tryLock()){
+						j=rand.nextInt(locks.length);
+					}
+					locked=true;
+				}
 				try {
 					pkt = sources[j].deq();
 					if (ranges.check(pkt.header.source, pkt.header.dest)) {
@@ -141,6 +150,8 @@ class ParallelPacketWorker implements PacketWorker {
 						totalPackets += 1;
 					}
 				} catch (EmptyException e) {
+					locks[j].unlock();
+					locked=false;
 					j = rand.nextInt(sources.length);
 					break;
 				}
@@ -148,6 +159,7 @@ class ParallelPacketWorker implements PacketWorker {
 		}
 		while (true) {
 			try {
+				locks[i].lock();
 				pkt = sources[i].deq();
 				if (ranges.check(pkt.header.source, pkt.header.dest)) {
 					long key = fingerprint.getFingerprint(pkt.body.iterations,
@@ -159,6 +171,7 @@ class ParallelPacketWorker implements PacketWorker {
 					totalPackets += 1;
 				}
 			} catch (EmptyException e) {
+				locks[i].unlock();
 				break;
 			}
 		}
@@ -175,16 +188,19 @@ class ParallelConfigPacketWorker implements PacketWorker {
 	long residue = 0;
 	Fingerprint fingerprint;
 	final int i;
+	final Lock[] locks;
+	
 
 	public ParallelConfigPacketWorker(PaddedPrimitiveNonVolatile<Boolean> done,
 			PacketQueue[] queues, ConcurrentHashMap<Long, Integer> table,
-			int i, RangeLists ranges) {
+			int i, RangeLists ranges,Lock[] locks) {
 		this.done = done;
 		this.sources = queues;
 		this.table = table;
 		this.fingerprint = new Fingerprint();
 		this.i = i;
 		this.ranges = ranges;
+		this.locks = locks;
 	}
 
 	public void run() {
@@ -192,9 +208,16 @@ class ParallelConfigPacketWorker implements PacketWorker {
 		Random rand = new Random();
 		Packet pkt;
 		int j = rand.nextInt(sources.length);
+		boolean locked=false;
 		while (!done.value) {
 			while (true) {
 				try {
+					if(!locked){
+						while(!locks[j].tryLock()){
+							j=rand.nextInt(locks.length);
+						}
+						locked=true;
+					}
 					pkt = sources[j].deq();
 					if (pkt.config.acceptingRange) {
 						ranges.add(pkt.config.address, pkt.config.addressBegin,
@@ -207,6 +230,8 @@ class ParallelConfigPacketWorker implements PacketWorker {
 					}
 					break;
 				} catch (EmptyException e) {
+					locks[j].unlock();
+					locked=false;
 					j = rand.nextInt(sources.length);
 					break;
 				}
@@ -214,6 +239,7 @@ class ParallelConfigPacketWorker implements PacketWorker {
 		}
 		while (true) {
 			try {
+				locks[i].lock();
 				pkt = sources[i].deq();
 				if (pkt.config.acceptingRange) {
 					ranges.add(pkt.config.address, pkt.config.addressBegin,
@@ -224,6 +250,7 @@ class ParallelConfigPacketWorker implements PacketWorker {
 							pkt.config.personaNonGrata);
 				}
 			} catch (EmptyException e) {
+				locks[i].unlock();
 				break;
 			}
 		}
