@@ -1,6 +1,8 @@
 import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentSkipListMap;
+import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public interface RangeList {
@@ -105,7 +107,7 @@ class SerialRangeList implements RangeList{
 class ParallelRangeList implements RangeList{
 	private ConcurrentSkipListMap<Integer,Integer> ranges = new ConcurrentSkipListMap<Integer,Integer>();
 	private boolean PNG;
-	private ReadWriteLock lock;
+	private Lock lock;
 
 	public ParallelRangeList(int addressBegin, int addressEnd, boolean personaNonGrata,boolean acceptingRange) {
 		//assuming addresses are fine if not stated otherwise
@@ -118,11 +120,11 @@ class ParallelRangeList implements RangeList{
 			ranges.put(addressEnd, Integer.MAX_VALUE);
 			
 		}
-		lock = new ReentrantReadWriteLock();
+		lock = new ReentrantLock();
 	}
 
 	public void add(int addressBegin, int addressEnd, boolean personaNonGrata) {
-		lock.writeLock().lock();
+		lock.lock();
 		PNG=personaNonGrata;
 		Entry<Integer, Integer> entry = ranges.floorEntry(addressBegin);
 		if(entry.getValue()<addressBegin){
@@ -145,11 +147,11 @@ class ParallelRangeList implements RangeList{
 			ranges.remove(entry.getKey());
 			ranges.put(ranges.floorEntry(addressBegin).getKey(), entry.getValue());
 		}
-		lock.writeLock().unlock();
+		lock.unlock();
 	}
 
 	public void subtract(int addressBegin, int addressEnd, boolean personaNonGrata) {
-		lock.writeLock().lock();
+		lock.lock();
 		PNG=personaNonGrata;
 		Entry<Integer, Integer> entry = ranges.floorEntry(addressBegin);
 		if(entry.getValue()>addressEnd){// if placing range inside of an old range 
@@ -172,7 +174,7 @@ class ParallelRangeList implements RangeList{
 				ranges.remove(entry.getKey());
 			}
 		}
-		lock.writeLock().unlock();
+		lock.unlock();
 	}
 
 	public boolean PNG() {
@@ -180,7 +182,6 @@ class ParallelRangeList implements RangeList{
 	}
 
 	public boolean contains(int source) {
-		lock.readLock().lock();
 		Entry<Integer, Integer> entry = ranges.firstEntry();
 		//System.out.println(source);
 		while(entry.getValue()<source){
@@ -188,10 +189,8 @@ class ParallelRangeList implements RangeList{
 			entry=ranges.higherEntry(entry.getKey());
 		}
 		if(entry.getKey()<source){
-			lock.readLock().unlock();
 			return true;
 		}
-		lock.readLock().unlock();
 		return false;
 	}
 	public void print() {
