@@ -191,8 +191,8 @@ class ParellelFirewall{
 				meanTrainSize, meanTrainsPerComm, meanWindow, meanCommsPerAddress,
 				meanWork, configFraction, pngFraction, acceptingFraction);
 		ConcurrentHashMap<Long,Integer> checksums=new ConcurrentHashMap<Long,Integer>(); 
-		PacketQueue[] queues = new PacketQueue[n-((int) Math.ceil(n*configFraction))];
-		PacketQueue[] configs = new PacketQueue[(int) Math.ceil(n*configFraction)];
+		PacketQueue[] queues = new PacketQueue[n-((int) Math.ceil(n/4))];
+		PacketQueue[] configs = new PacketQueue[(int) Math.ceil(n/4)];
 	    for(int i=0; i<queues.length; i++){
 	    	queues[i]=new PacketQueue(8);
 	    }
