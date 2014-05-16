@@ -191,9 +191,13 @@ class ParellelFirewall{
 				meanTrainSize, meanTrainsPerComm, meanWindow, meanCommsPerAddress,
 				meanWork, configFraction, pngFraction, acceptingFraction);
 		ConcurrentHashMap<Long,Integer> checksums=new ConcurrentHashMap<Long,Integer>(); 
-		PacketQueue[] queues = new PacketQueue[n];
+		PacketQueue[] queues = new PacketQueue[n-((int) Math.ceil(n*configFraction*2))];
+		PacketQueue[] configs = new PacketQueue[(int) Math.ceil(n*configFraction*2)];
 	    for(int i=0; i<queues.length; i++){
 	    	queues[i]=new PacketQueue(8);
+	    }
+	    for(int i=0; i<configs.length; i++){
+	    	configs[i]=new PacketQueue(8);
 	    }
 		//preconfiguring address ranges
 		for(int i=0;i<Math.pow(Math.pow(2, numAddressesLog), 1.5);i++){
@@ -211,14 +215,18 @@ class ParellelFirewall{
 	    PaddedPrimitiveNonVolatile<Boolean> done = new PaddedPrimitiveNonVolatile<Boolean>(false);
 		
 		//dispatcher and workers
-	    Dispatcher dispatcher = new Dispatcher(queues, source, finished);
+	    ParallelDispatcher dispatcher = new ParallelDispatcher(queues, configs, source, finished);
 	    Thread dispatcherThread = new Thread(dispatcher);
 	    
 	    Thread[] workers = new Thread[n];
 	    PacketWorker[] workersdata = new PacketWorker[n];
 	    for(int i=0; i<queues.length; i++){
-	    	workersdata[i]=new STMPacketWorker(done, queues,checksums,i,ranges);
+	    	workersdata[i]=new ParallelPacketWorker(done, queues,checksums,i,ranges);
 	    	workers[i]= new Thread(workersdata[i]);
+	    }
+	    for(int i=0; i<n-queues.length; i++){
+	    	workersdata[i+queues.length]=new ParallelConfigPacketWorker(done, configs,checksums,i,ranges);
+	    	workers[i+queues.length]= new Thread(workersdata[i+queues.length]);
 	    }
 	    //start workers
 	    for(Thread worker:workers){

@@ -6,7 +6,6 @@ public interface PacketWorker extends Runnable {
 	public void run();
 }
 
-// class ParallelHashPacketWorker<T> implements HashPacketWorker ...
 class STMPacketWorker implements PacketWorker {
 	PaddedPrimitiveNonVolatile<Boolean> done;
 	final PacketQueue[] sources;

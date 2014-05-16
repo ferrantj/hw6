@@ -30,6 +30,7 @@ public class ParallelDispatcher implements Runnable {
 								p = null;
 								break;
 							} catch (FullException e) {
+								System.out.println("not processsing fast enough");
 							}
 						}
 					}
@@ -43,6 +44,7 @@ public class ParallelDispatcher implements Runnable {
 								p = null;
 								break;
 							} catch (FullException e) {
+								System.out.println("data is filling");
 							}
 						}
 					}
