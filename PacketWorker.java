@@ -2,7 +2,7 @@ import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.Lock;
 
-public interface PacketWorker<T> extends Runnable {
+public interface PacketWorker extends Runnable {
   public void run();
 }
 
@@ -81,6 +81,117 @@ class STMPacketWorker implements PacketWorker{
 						totalPackets+=1;
 					}
 					break;
+				}
+			} catch (EmptyException e) {
+				break;
+			}
+	    }
+	}
+	
+}
+class ParallelPacketWorker implements PacketWorker{
+	PaddedPrimitiveNonVolatile<Boolean> done;
+	final PacketQueue[] sources;
+	final ConcurrentHashMap<Long,Integer> table;
+	final RangeLists ranges;
+	long totalPackets = 0;
+	long residue = 0;
+	Fingerprint fingerprint;
+	final int i;
+	public ParallelPacketWorker(PaddedPrimitiveNonVolatile<Boolean> done,
+			PacketQueue[] queues,ConcurrentHashMap<Long,Integer> table,int i, RangeLists ranges) {
+		this.done=done;
+		this.sources=queues;
+		this.table=table;
+		this.fingerprint=new Fingerprint();
+		this.i=i;
+		this.ranges=ranges;
+	}
+	public void run() {
+		Random rand = new Random();
+		Packet pkt;
+		int j=rand.nextInt(sources.length-1);
+		while( !done.value ) {
+			while(true){
+				try {
+					pkt=sources[j].deq();
+					if(ranges.check(pkt.header.source,pkt.header.dest)){
+						long key = fingerprint.getFingerprint(pkt.body.iterations, pkt.body.seed);
+						if(!table.containsKey(key)){
+							table.put(key, 0);
+						}
+						table.put(key, table.get(key)+1);
+						totalPackets+=1;
+					}
+				} catch (EmptyException e) {
+					j=rand.nextInt(sources.length-1);
+					break;
+				}
+		    }
+		}
+		while(true){
+			try {
+				pkt=sources[i].deq();
+				if(ranges.check(pkt.header.source,pkt.header.dest)){
+					long key = fingerprint.getFingerprint(pkt.body.iterations, pkt.body.seed);
+					if(!table.containsKey(key)){
+						table.put(key, 0);
+					}
+					table.put(key, table.get(key)+1);
+					totalPackets+=1;
+				}
+			} catch (EmptyException e) {
+				break;
+			}
+	    }
+	}
+	
+}
+
+class ParallelConfigPacketWorker implements PacketWorker{
+	PaddedPrimitiveNonVolatile<Boolean> done;
+	final PacketQueue[] sources;
+	final ConcurrentHashMap<Long,Integer> table;
+	final RangeLists ranges;
+	long totalPackets = 0;
+	long residue = 0;
+	Fingerprint fingerprint;
+	final int i;
+	public ParallelConfigPacketWorker(PaddedPrimitiveNonVolatile<Boolean> done,
+			PacketQueue[] queues,ConcurrentHashMap<Long,Integer> table,int i, RangeLists ranges) {
+		this.done=done;
+		this.sources=queues;
+		this.table=table;
+		this.fingerprint=new Fingerprint();
+		this.i=i;
+		this.ranges=ranges;
+	}
+	public void run() {
+		Random rand = new Random();
+		Packet pkt;
+		while( !done.value ) {
+			while(true){
+				try {
+					pkt=sources[i].deq();
+					if(pkt.config.acceptingRange){
+						ranges.add(pkt.config.address,pkt.config.addressBegin,pkt.config.addressEnd,pkt.config.personaNonGrata);
+					}
+					else{
+						ranges.subtract(pkt.config.address,pkt.config.addressBegin,pkt.config.addressEnd,pkt.config.personaNonGrata);
+					}
+				} catch (EmptyException e) {
+					break;
+				}
+		    }
+		}
+		while(true){
+			try {
+				pkt=sources[i].deq();
+				if(pkt.config.acceptingRange){
+					ranges.add(pkt.config.address,pkt.config.addressBegin,pkt.config.addressEnd,pkt.config.personaNonGrata);
+				}
+				else{
+					ranges.subtract(pkt.config.address,pkt.config.addressBegin,pkt.config.addressEnd,pkt.config.personaNonGrata);
 				}
 			} catch (EmptyException e) {
 				break;

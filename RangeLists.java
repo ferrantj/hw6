@@ -91,3 +91,48 @@ class STMRangeLists implements RangeLists{
 		}
 	}
 }
+
+class ParallelRangeLists implements RangeLists{
+	HashMap<Integer,RangeList> ranges;
+	public ParallelRangeLists(){
+		ranges = new HashMap<Integer,RangeList>();
+	}
+	public void add(int address, int addressBegin, int addressEnd, boolean personaNonGrata) {
+		if(ranges.containsKey(address)){
+			ranges.get(address).add(addressBegin,addressEnd, personaNonGrata);
+		}
+		else{
+			ranges.put(address,new ParallelRangeList(addressBegin,addressEnd,personaNonGrata,true));
+		}
+	}
+
+	public void subtract(int address, int addressBegin, int addressEnd,
+			boolean personaNonGrata) {
+		if(ranges.containsKey(address)){
+			ranges.get(address).subtract(addressBegin,addressEnd, personaNonGrata);
+		}
+		else{
+			ranges.put(address,new ParallelRangeList(addressBegin,addressEnd,personaNonGrata,false));
+		}
+		
+	}
+
+	public boolean check(int source, int dest) {
+		boolean x=ranges.containsKey(source);
+		boolean y=ranges.containsKey(dest);
+		if (x&&y){
+			return !ranges.get(source).PNG()&&ranges.get(dest).contains(source);
+		}
+		//assuming safe if not yet configured
+		else{
+			if(y){
+				return ranges.get(dest).contains(source);
+			}
+			if(x){
+				return !ranges.get(source).PNG();
+			}
+			return true;
+		}
+	}
+
+}

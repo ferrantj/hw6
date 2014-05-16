@@ -1,4 +1,3 @@
-
 public class Dispatcher implements Runnable{
 	private PacketQueue[] queues;
 	private PacketGenerator source;

@@ -13,9 +13,10 @@ CLASSES = \
 	PacketQueue.java \
 	PacketWorker.java \
 	PaddedPrimitive.java \
+	ParallelDispatcher.java \
 	RandomGenerator.java \
-	RangeList.java
-	RangeLists.java
+	RangeList.java \
+	RangeLists.java \
 	
 
 default: classes
